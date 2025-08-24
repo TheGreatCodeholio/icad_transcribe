@@ -5,7 +5,7 @@ iCAD Transcribe is a Progressive Web Application (PWA) that processes audio inpu
 ---
 
 ## Requirements
-- **Linux**: This software is mean to be run on a Linux Server of some sort. I developed it running on a debian based distro.
+- **Linux**: This software is mean to be run on a Linux Server of some sort. I developed it running on a debian based distro. Windows make work in some cases, but is not directly supported.
 - **Docker**: Ensure Docker is installed on your system. [Install Docker](https://docs.docker.com/get-docker/)
 - **Git**: Required to clone the repository. [Install Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 
@@ -67,62 +67,96 @@ Ensure the directory has the required structure for the application to function 
 Run the following commands:
 ```bash
 # Create the required directories
-mkdir -p log etc var
+mkdir -p log var
 
-# Change ownership to the non-root user
-sudo chown -R icad_dispatch:icad_dispatch log etc
+# Change ownership to the non-root docker user
+sudo chown -R icad_dispatch:icad_dispatch log var
 ```
 
-The `log` directory will store logs, the `var` directory will store whisper models, and the `etc` directory will store configuration files.
+The `log` directory will store logs, and the `var` directory will store whisper models and other variables.
 
 ---
 
 ### 5. **Configure the `.env` File**
-Update the `.env` file with your specific configuration values. Key variables to update:
-- **`WORKING_PATH`**: Set this to the absolute path of the cloned repository you can get this by running `pwd`.
-- **FASTER WHISPER**: Set the base configuration for Faster-Whisper.
 
-Example `.env`:
-```dotenv
-#Log Level
-#1 - Debug
-#2 - Info
-#3 - Warning
-#4 - Error
-#5 - Critical
+Update your `.env` with values appropriate for your environment. The app reads configuration from process environment variables at startup. A good workflow is:
+
+Copy a template to get started.
+```bash
+   cp .env.example .env
+```
+
+Edit `.env` and fill in the fields described below.
+
+---
+
+#### Required / Important Variables
+
+- **Logging**
+   - `LOG_LEVEL` — Numeric log level (e.g., 1=DEBUG, 2=INFO, 3=WARNING, 4=ERROR, 5=CRITICAL).
+   - `DEBUG` — `True` for local development outside of docker, `False` for production.
+
+- **Base URL**
+   - `BASE_URL` — Publicly reachable base URL (scheme + host[:port]) used in links and some redirects.
+
+- **Cookies / Sessions**
+   - `SESSION_COOKIE_SECURE` — `True` in production (HTTPS); `False` for local HTTP.
+   - `SESSION_COOKIE_DOMAIN` — Hostname used by the browser for the session cookie.
+   - `SESSION_COOKIE_NAME` — Cookie name for the app session.
+   - `SESSION_COOKIE_PATH` — Cookie path scope (usually `/`).
+
+- **Database**
+   - `SQLITE_DATABASE_PATH` — Path to the SQLite database file.
+
+- **Bootstrap Root User (first run)**
+   - `ROOT_USERNAME` — Optional; defaults to `root` if omitted. Don't use the default.
+   - `ROOT_PASSWORD` — Inline password for bootstrap user. **Change** once logged in for the first time.
+
+---
+
+#### Example `.env` for running on a LAN only server no proxy (nginx).
+
+```env
+# ─────────────── Logging ───────────────
 LOG_LEVEL=1
+DEBUG=False
 
-#Working Path
-WORKING_PATH="/home/icad/icad_transcribe"
+# ─────────────── Base URL ───────────────
+BASE_URL=http://192.168.1.104:9912
 
-#URL (can use localhost or an IP address here
-BASE_URL="https://stt.icaddispatch.com"
-
-#COOKIE
-SESSION_COOKIE_SECURE=True
-SESSION_COOKIE_DOMAIN=stt.icaddispatch.com
-SESSION_COOKIE_NAME=icaddispatch.com
+# ─────────────── Cookies ───────────────
+SESSION_COOKIE_SECURE=False
+SESSION_COOKIE_DOMAIN=192.168.1.104
+SESSION_COOKIE_NAME=icad_transcribe
 SESSION_COOKIE_PATH=/
 
-# AUDIO UPLOAD
-AUDIO_UPLOAD_ALLOWED_MIMETYPES="audio/x-wav,audio/x-m4a,audio/mpeg"
-AUDIO_UPLOAD_MIN_AUDIO_LENGTH=0
-AUDIO_UPLOAD_MAX_AUDIO_LENGTH=300
-AUDIO_UPLOAD_MAX_FILE_SIZE_MB=5
+# ─────────────── SQLite ───────────────
+SQLITE_DATABASE_PATH=var/icad_transcribe.db
 
-# SQLITE
-SQLITE_DATABASE_PATH="etc/transcribe.db"
+# ─────────────── Root User Bootstrap ───────────────
+# Root username (optional, defaults to "root" if omitted)
+ROOT_USERNAME=root
 
-# FASTER WHISPER
-WHISPER_BATCHED=false
-WHISPER_MODEL="large-v3"
-WHISPER_MODEL_PATH="var/models"
-WHISPER_DEVICE="cuda"
-WHISPER_GPU_INDEXES="all"
-WHISPER_COMPUTE_TYPE="float16"
-WHISPER_CPU_THREADS=4
-WHISPER_NUM_WORKERS=1
+# Root password (required on first boot)
+ROOT_PASSWORD=changeme123
+
 ```
+
+---
+
+#### Using Docker/Compose (env file)
+
+Point your service to the env file: (.env set by default). Compose picks this .env up for container
+```yaml
+   sservices:
+   transcription:
+      image: thegreatcodeholio/icad_transcribe:1.0
+      user: "icad_dispatch"
+      env_file:
+         - .env
+# ... other service config (volumes, ports, command, etc.)
+```
+
 
 ---
 
@@ -137,7 +171,7 @@ docker compose up -d
 This command will:
 1. Pull the necessary images from the repository.
 2. Build and start the containers in detached mode (running in the background).
-3. Mount the `log` and `etc` directories based on the `WORKING_PATH` specified in the `.env` file.
+3. Mount the `log` and `etc` directories based on the path you ran the docker compose command in.
 
 ---
 
@@ -154,15 +188,15 @@ docker ps -a
 #### Check Container Logs
 1. Identify the container name or ID from the output of `docker ps`.
 2. View live logs for a specific container:
-   ^^bash
+   ``bash
    docker logs -f <container_id_or_name>
-   ^^
-- Replace `<container_id_or_name>` with the actual container ID or name (e.g., `flask-app`).
+   ``
+- Replace `<container_id_or_name>` with the actual container ID or name (e.g., `icad_transcribe`).
 
 #### Example
 To view logs for the Flask application:
 ```bash
-docker logs -f flask-app
+docker logs -f icad_transcribe
 ```
 
 This will show real-time logs to help you verify that the services are starting as expected.
@@ -172,13 +206,13 @@ This will show real-time logs to help you verify that the services are starting 
 ## Security Best Practices
 1. **Run as Non-root**: The application enforces a non-root user within the container to improve security. Host directories and files in the working path must be read/write by the same non-root user (`icad_dispatch`).
 
-2. **Use Secure Passwords**: Update the `.env` file with strong, unique passwords for MySQL and Redis.
+2. **Use Secure Passwords**: If allowing general access from the internet, use a non-standard user name and a strong password.
 
 3. **Restrict Permissions**: Allow only the `icad_dispatch` group and `your_user` access to the application directory and logs:
    ```bash
    sudo chown your_user:icad_dispatch /home/your_user/icad_transcribe
    sudo chmod -R 760 /home/your_user/icad_transcribe
    ```
-4. **Use HTTPS**: Ensure the application is accessed via HTTPS in production to secure data in transit.
+4. **Use HTTPS**: Ensure the application is accessed via HTTPS in production to secure data in transit. This can be done with NGINX proxy.
 
 ---

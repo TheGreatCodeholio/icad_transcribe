@@ -1,16 +1,20 @@
 services:
   transcription:
-    image: thegreatcodeholio/icad_transcribe_api:2.2.0
+    image: thegreatcodeholio/icad_transcribe:1.0
+    user: "icad_dispatch"
+    env_file:
+      - .env
+    ports:
+      - "9912:9912"
+    volumes:
+      - ./log:/app/log        # ensure host perms: chown -R 9911:9911 log var
+      - ./var:/app/var
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
               count: all
-              capabilities: [ gpu ]
-    ports:
-      - "9912:9912"
-    volumes:
-      - ${WORKING_PATH}/log:/app/log
-      - ${WORKING_PATH}/etc:/app/etc
-      - ${WORKING_PATH}/var:/app/var
+              capabilities: [gpu]
+              # device_ids: ['0','3']  # optional: target specific GPUs
+    restart: unless-stopped

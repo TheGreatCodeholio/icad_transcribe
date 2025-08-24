@@ -2,16 +2,16 @@ import requests
 
 def post_audio():
     # URL of your Flask endpoint
-    url = "http://localhost:3001/api/transcribe/get"
+    url = "https://stt.icaddispatch.com/api/transcribe/get"
 
     # Path to the audio file on your local system
-    audio_file_path = "/home/ian/PycharmProjects/icad_transcript_api/test_audio/300-1739377770_155415000.0-call_5245.wav"
+    audio_file_path = "/srv/dev_projects/personal/IdeaProjects/icad_dispatch/test_audio/station_79_voice.mp3"
 
     # Form fields that you want to match your Flask endpoint
     # The keys here (audioName, audioType, dateTime, etc.)
     # should match the form fields your endpoint expects.
     data = {
-        "key": "40812296-a338-4032-a5e1-4b65765fe8fb",
+        "key": "6aa4f142-3851-452e-a140-8fa7450aa49f",
         "transcribe_config_id": 1,
         "sources": "[]"
     }
