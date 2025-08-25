@@ -1,6 +1,6 @@
 services:
   transcription:
-    image: thegreatcodeholio/icad_transcribe:1.0
+    image: thegreatcodeholio/icad_transcribe:latest
     user: "icad_dispatch"
     env_file:
       - .env
